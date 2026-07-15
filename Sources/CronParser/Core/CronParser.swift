@@ -28,6 +28,9 @@ public enum CronParser {
     ///
     /// - Returns: a ``Result`` with the parsed fields, a human description, and the
     ///   next 5 run times — or a populated `error` when the expression is invalid.
+    /// - Note: Vixie-cron semantics — weekday `0` and `7` both mean Sunday, and
+    ///   day-of-month / day-of-week are OR-ed when both are restricted (a field is
+    ///   "restricted" unless its text starts with `*`).
     public static func parse(_ expr: String, now: Date, calendar: Calendar) -> Result {
         let parts = expr.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
         let names = ["Minute", "Hour", "Day", "Month", "Week"]
@@ -75,6 +78,8 @@ public enum CronParser {
         return result.isEmpty ? nil : result
     }
 
+    /// Walks forward from `now` one minute at a time (skipping whole non-matching
+    /// days) and collects the next `count` fire times, up to an 8-year horizon.
     private static func nextRuns(_ minutes: Set<Int>, _ hours: Set<Int>, _ days: Set<Int>,
                                  _ months: Set<Int>, _ weekdays: Set<Int>,
                                  domRestricted: Bool, dowRestricted: Bool,
@@ -110,6 +115,8 @@ public enum CronParser {
         return runs
     }
 
+    /// Builds the human-readable sentence ("Every 15 minutes, hours 9 through 17, …")
+    /// from the raw field strings.
     private static func describe(_ p: [String]) -> String {
         var bits: [String] = []
         if p[0] == "*" { bits.append("every minute") }

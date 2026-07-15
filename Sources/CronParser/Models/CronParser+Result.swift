@@ -31,6 +31,7 @@ public extension CronParser {
         /// An error message if the expression was invalid, otherwise `nil`.
         public let error: String?
 
+        /// Creates a result with the given fields, description, run times, and error.
         public init(fields: [(name: String, value: String)], description: String,
                     nextRuns: [Date], error: String?) {
             self.fields = fields
