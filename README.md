@@ -25,7 +25,7 @@ A tiny, dependency-free parser for standard 5-field cron expressions — into la
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/arraypress/swift-cron-parser.git", from: "1.0.0")
+    .package(url: "https://github.com/Sidewatch/swift-cron-parser.git", from: "1.0.0")
 ]
 ```
 
