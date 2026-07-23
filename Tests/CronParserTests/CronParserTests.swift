@@ -149,6 +149,42 @@ final class CronParserTests: XCTestCase {
         XCTAssertEqual(cal.component(.day, from: r.nextRuns[0]), 13)
     }
 
+    // Regression: Vixie name tokens (JAN–DEC, SUN–SAT) were rejected as unparseable.
+    func testMonthAndWeekdayNamesParse() {
+        let mon = CronParser.parse("0 0 * * MON", now: now, calendar: cal)
+        XCTAssertNil(mon.error)
+        XCTAssertFalse(mon.nextRuns.isEmpty)
+        for run in mon.nextRuns {
+            XCTAssertEqual(cal.component(.weekday, from: run), 2)   // Calendar: 2=Mon
+        }
+
+        let jan = CronParser.parse("0 0 1 JAN *", now: now, calendar: cal)
+        XCTAssertNil(jan.error)
+        let first = cal.dateComponents([.year, .month, .day], from: jan.nextRuns[0])
+        XCTAssertEqual(first.year, 2027)   // Jan 1 already passed in 2026
+        XCTAssertEqual(first.month, 1)
+        XCTAssertEqual(first.day, 1)
+    }
+
+    // Names are case-insensitive and work in ranges and lists, like the real daemon.
+    func testNamesInRangesListsAndLowercase() {
+        let range = CronParser.parse("0 9 * * mon-fri", now: now, calendar: cal)
+        XCTAssertNil(range.error)
+        for run in range.nextRuns {
+            XCTAssertTrue((2...6).contains(cal.component(.weekday, from: run)))
+        }
+
+        let list = CronParser.parse("0 0 1 jan,JUL *", now: now, calendar: cal)
+        XCTAssertNil(list.error)
+        for run in list.nextRuns {
+            XCTAssertTrue([1, 7].contains(cal.component(.month, from: run)))
+            XCTAssertEqual(cal.component(.day, from: run), 1)
+        }
+
+        XCTAssertNotNil(CronParser.parse("0 0 * * MOO", now: now, calendar: cal).error)
+        XCTAssertNotNil(CronParser.parse("0 0 * MON *", now: now, calendar: cal).error)   // weekday name in the month field
+    }
+
     // Regression: weekday 7 parsed as Sunday but described as the literal "7".
     func testWeekdaySevenIsDescribedAsSunday() {
         let r = CronParser.parse("0 0 * * 7", now: now, calendar: cal)

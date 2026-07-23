@@ -40,8 +40,8 @@ public enum CronParser {
         }
         let fields = Array(zip(names, parts)).map { (name: $0.0, value: $0.1) }
         guard let minutes = set(parts[0], 0, 59), let hours = set(parts[1], 0, 23),
-              let days = set(parts[2], 1, 31), let months = set(parts[3], 1, 12),
-              let weekdaysRaw = set(parts[4], 0, 7) else {
+              let days = set(parts[2], 1, 31), let months = set(parts[3], 1, 12, names: monthNames),
+              let weekdaysRaw = set(parts[4], 0, 7, names: weekdayNames) else {
             return Result(fields: fields, description: "", nextRuns: [], error: "Couldn't parse one of the fields.")
         }
         let weekdays = Set(weekdaysRaw.map { $0 == 7 ? 0 : $0 })   // both 0 and 7 mean Sunday
@@ -53,8 +53,21 @@ public enum CronParser {
         return Result(fields: fields, description: describe(parts), nextRuns: runs, error: nil)
     }
 
-    /// A single field → the set of matching values. Handles `*`, `*/n`, `a-b`, `a-b/n`, `a,b`, `n`.
-    private static func set(_ field: String, _ lo: Int, _ hi: Int) -> Set<Int>? {
+    /// Vixie/cronie month names, accepted (case-insensitively) in the month field.
+    private static let monthNames: [String: Int] = [
+        "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
+        "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12
+    ]
+
+    /// Vixie/cronie weekday names, accepted (case-insensitively) in the weekday field.
+    private static let weekdayNames: [String: Int] = [
+        "SUN": 0, "MON": 1, "TUE": 2, "WED": 3, "THU": 4, "FRI": 5, "SAT": 6
+    ]
+
+    /// A single field → the set of matching values. Handles `*`, `*/n`, `a-b`, `a-b/n`, `a,b`, `n`;
+    /// `names` maps the field's Vixie name tokens (JAN…DEC, SUN…SAT) to their values.
+    private static func set(_ field: String, _ lo: Int, _ hi: Int, names: [String: Int] = [:]) -> Set<Int>? {
+        func value(_ s: any StringProtocol) -> Int? { Int(s) ?? names[s.uppercased()] }
         var result = Set<Int>()
         for part in field.split(separator: ",") {
             let p = String(part)
@@ -66,9 +79,9 @@ public enum CronParser {
             var start = lo, end = hi
             if range == "*" {
             } else if let dash = range.firstIndex(of: "-") {
-                start = Int(range[..<dash]) ?? -1
-                end = Int(range[range.index(after: dash)...]) ?? -1
-            } else if let single = Int(range) {
+                start = value(range[..<dash]) ?? -1
+                end = value(range[range.index(after: dash)...]) ?? -1
+            } else if let single = value(range) {
                 start = single; end = single
             } else { return nil }
             guard start >= lo, end <= hi, start <= end, step > 0 else { return nil }
